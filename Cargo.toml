@@ -5,3 +5,4 @@ authors = ["Tobin C. Harding <tobin@coblox.tech>"]
 edition = "2018"
 
 [dependencies]
+anyhow = "1.0"
