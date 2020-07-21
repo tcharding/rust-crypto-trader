@@ -16,3 +16,10 @@ pub fn bitcoin_decimal_places() -> DecimalPlaces {
         fiat: 2,
     }
 }
+
+
+    debug!("{}", url.to_string());
+
+    let body = client.get(url).send().await?.text().await?;
+    println!("{:?}", body);
+     unimplemented!();

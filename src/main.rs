@@ -1,19 +1,20 @@
 #![warn(rust_2018_idioms)]
 #![forbid(unsafe_code)]
 use anyhow::Result;
+use log::LevelFilter;
 use reqwest::Client;
-use rust_crypto_trader::*;
-use std::{thread, time::Duration};
+use rust_crypto_trader::{trace, *};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("Rust trading bot - enjoy!");
 
-    let client = Client::new();
-    let _ = get_valid_primary_currency_codes(client).await?;
+    trace::init_tracing(LevelFilter::Debug)?;
 
-    loop {
-        println!("looping ...");
-        thread::sleep(Duration::from_secs(2));
-    }
+    let client = Client::new();
+    //    let v = get_valid_secondary_currency_codes(client).await?;
+    let ms = get_market_summary(client, "Xbt", "Aud").await?;
+    println!("{}", ms);
+
+    Ok(())
 }
