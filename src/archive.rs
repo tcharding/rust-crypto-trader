@@ -23,3 +23,21 @@ pub fn bitcoin_decimal_places() -> DecimalPlaces {
     let body = client.get(url).send().await?.text().await?;
     println!("{:?}", body);
      unimplemented!();
+
+
+
+pub async fn get_valid_primary_currency_codes(client: Client) -> Result<Vec<String>> {
+    let url = build_url("GetValidPrimaryCurrencyCodes")?;
+    let body = client.get(url).send().await?.text().await?;
+    let v: Vec<String> = serde_json::from_str(&body)?;
+
+    Ok(v)
+}
+
+pub async fn get_valid_secondary_currency_codes(client: Client) -> Result<Vec<String>> {
+    let url = build_url("GetValidSecondaryCurrencyCodes")?;
+    let body = client.get(url).send().await?.text().await?;
+    let v: Vec<String> = serde_json::from_str(&body)?;
+
+    Ok(v)
+}

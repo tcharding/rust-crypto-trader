@@ -5,27 +5,28 @@ use tracing::{info, subscriber, Level};
 use tracing_log::LogTracer;
 use tracing_subscriber::FmtSubscriber;
 
-pub fn init_tracing(level: LevelFilter) -> Result<()> {
-    if level == LevelFilter::Off {
+pub fn init_tracing(crate_level: LevelFilter) -> Result<()> {
+    if crate_level == LevelFilter::Off {
         return Ok(());
     }
 
-    // We want upstream library log messages, just only at Info level.
-    LogTracer::init_with_filter(LevelFilter::Info)?;
+    let lib_level = LevelFilter::Info;
 
-    let is_terminal = atty::is(Stream::Stdout);
+    LogTracer::init_with_filter(lib_level)?;
+
+    let ansi = atty::is(Stream::Stdout);
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(level_from_level_filter(level))
-        .with_ansi(is_terminal)
+        .with_max_level(into_level(crate_level))
+        .with_ansi(ansi)
         .finish();
 
     subscriber::set_global_default(subscriber)?;
-    info!("Initialized tracing with level: {}", level);
+    info!("Initialized tracing with level: {}", crate_level);
 
     Ok(())
 }
 
-fn level_from_level_filter(level: LevelFilter) -> Level {
+fn into_level(level: LevelFilter) -> Level {
     match level {
         LevelFilter::Off => unreachable!(),
         LevelFilter::Error => Level::ERROR,
