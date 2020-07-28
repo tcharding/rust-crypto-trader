@@ -1,7 +1,6 @@
 use anyhow::Result;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::fmt::{self, Display};
 use url::Url;
 
 // GetValidPrimaryCurrencyCodes
@@ -187,16 +186,6 @@ pub struct MarketSummary {
     pub last_price: f32,
     pub primary_currency_code: String,
     pub secondary_currency_code: String,
-}
-
-impl Display for MarketSummary {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match serde_json::to_string_pretty(self) {
-            Ok(s) => s,
-            Err(_) => serde_json::to_string(self).expect("failed to deserialize market summary"),
-        };
-        write!(f, "{}", s)
-    }
 }
 
 /// Returned by GetOrderBook
