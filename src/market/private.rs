@@ -1,6 +1,9 @@
-use anyhow::Result;
-use reqwest::Client;
+use anyhow::{bail, Result};
+use hmac::{Hmac, Mac, NewMac};
+use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
+use sha2::Sha256;
+use std::time::{SystemTime, UNIX_EPOCH};
 use url::Url;
 
 // GetOpenOrders
@@ -21,6 +24,9 @@ use url::Url;
 // WithdrawDigitalCurrency
 // RequestFiatWithdrawal
 
+// const READER_API_KEY: &str = "b2f7707a-4b1c-4880-b4c4-036d81f3de59";
+const READER_API_SECRET: &[u8; 32] = b"get this from the file system";
+
 /// Implements the private methods for Inedependent Reserve crypto exchange API.
 pub struct Private {
     client: Client,
@@ -40,21 +46,56 @@ impl Private {
     //     "pageIndex":1,
     //     "pageSize":25
     // }
-    pub async fn get_open_orders(
-        &self,
-        _base: &str,
-        _quote: &str,
-        _page_index: usize,
-        _page_size: usize,
-    ) -> Result<OpenOrders> {
+    pub async fn get_open_orders(&self) -> Result<Orders> {
         let url = self.build_url("GetOpenOrders")?;
+        let base = "Xbt".to_string();
+        let quote = "Aud".to_string();
+        let page_index = 1;
+        let page_size = 25;
+        let api_key = "b2f7707a-4b1c-4880-b4c4-036d81f3de59";
+        let nonce = nonce();
 
-        // TODO: Auth, sig, nonce and a POST request.
+        let msg = format!("{},apiKey={},nonce={},primaryCurrencyCode={},secondaryCurrencyCode={},pageIndex={},pageSize={}", url, api_key, nonce, base, quote, page_index, page_size);
+        let sig = sign(&msg);
 
-        let body = self.client.get(url).send().await?.text().await?;
-        let res: OpenOrders = serde_json::from_str(&body)?;
+        let params = ParamsOrders::new(api_key, nonce, &sig);
 
-        Ok(res)
+        let res = self.client.post(url).json(&params).send().await?;
+
+        if res.status() != StatusCode::OK {
+            bail!("api call returned status: {}", res.status())
+        }
+
+        let body = res.text().await?;
+        let orders: Orders = serde_json::from_str(&body)?;
+
+        Ok(orders)
+    }
+
+    pub async fn get_closed_orders(&self) -> Result<Orders> {
+        let url = self.build_url("GetClosedOrders")?;
+        let base = "Xbt".to_string();
+        let quote = "Aud".to_string();
+        let page_index = 1;
+        let page_size = 25;
+        let api_key = "b2f7707a-4b1c-4880-b4c4-036d81f3de59";
+        let nonce = nonce();
+
+        let msg = format!("{},apiKey={},nonce={},primaryCurrencyCode={},secondaryCurrencyCode={},pageIndex={},pageSize={}", url, api_key, nonce, base, quote, page_index, page_size);
+        let sig = sign(&msg);
+
+        let params = ParamsOrders::new(api_key, nonce, &sig);
+
+        let res = self.client.post(url).json(&params).send().await?;
+
+        if res.status() != StatusCode::OK {
+            bail!("api call returned status: {}", res.status())
+        }
+
+        let body = res.text().await?;
+        let orders: Orders = serde_json::from_str(&body)?;
+
+        Ok(orders)
     }
 
     // Build a URL from the Public API URL plus given path.
@@ -74,6 +115,29 @@ impl Default for Private {
     }
 }
 
+fn nonce() -> u64 {
+    let start = SystemTime::now();
+    let since_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+
+    since_epoch.as_secs()
+}
+
+type HmacSha256 = Hmac<Sha256>;
+
+// Returns hex representation of signed message.
+fn sign(msg: &str) -> String {
+    let mut mac = HmacSha256::new_varkey(READER_API_SECRET).expect("HMAC can take key of any size");
+
+    mac.update(msg.as_bytes());
+
+    let result = mac.finalize();
+    let code_bytes = result.into_bytes();
+
+    hex::encode(code_bytes)
+}
+
 // {
 //     "apiKey":"{api-key}",
 //     "nonce":{nonce},
@@ -83,6 +147,33 @@ impl Default for Private {
 //     "pageIndex":1,
 //     "pageSize":25
 // }
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParamsOrders {
+    api_key: String,
+    nonce: u64,
+    signature: String,
+    primary_currency_code: String,
+    secondary_currency_code: String,
+    page_index: usize,
+    page_size: usize,
+}
+
+impl ParamsOrders {
+    fn new(key: &str, nonce: u64, sig: &str) -> Self {
+        Self {
+            api_key: key.to_string(),
+            nonce,
+            signature: sig.to_string(),
+            primary_currency_code: "Xbt".to_string(),
+            secondary_currency_code: "Aud".to_string(),
+            page_index: 1,
+            page_size: 25,
+        }
+    }
+}
+
 /// Returned by GetOpenOrders, GetClosedOrders, GetClosedFilledOrders
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -362,13 +453,6 @@ pub struct CancelOrder {
     secondary_currency_code: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct Fees {
-    currency_code: String,
-    fee: f32,
-}
-
 // {
 //     "apiKey":"{api-key}",
 //     "nonce":{nonce},
@@ -426,4 +510,17 @@ pub struct RequestFiatwithdrawal {
     total_withdrawal_amonut: f32,
     fee_amount: f32,
     currency: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn can_get_orders() {
+        let api = Private::default();
+        let _ = api.get_open_orders().await.expect("API call failed");
+        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
+        let _ = api.get_closed_orders().await.expect("API call failed");
+    }
 }
