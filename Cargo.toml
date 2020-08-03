@@ -1,5 +1,5 @@
 [package]
-name = "rust-crypto-trader"
+name = "crypto-trader"
 version = "0.1.0"
 authors = ["Tobin C. Harding <tobin@coblox.tech>"]
 edition = "2018"
