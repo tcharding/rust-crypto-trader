@@ -3,8 +3,11 @@
 //! Private methods require authentication using an API key, signature, and a
 //! nonce.
 
-pub mod private;
-pub mod public;
+mod private;
+mod public;
+
+pub use private::*;
+pub use public::*;
 
 // Authentication
 //

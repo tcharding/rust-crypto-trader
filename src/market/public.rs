@@ -1,7 +1,12 @@
+mod orderbook;
+
 use anyhow::Result;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::fmt::{self, Display};
 use url::Url;
+
+pub use orderbook::*;
 
 // GetValidPrimaryCurrencyCodes
 // GetValidSecondaryCurrencyCodes
@@ -165,7 +170,7 @@ impl Public {
 
 impl Default for Public {
     fn default() -> Self {
-        Public {
+        Self {
             client: Client::new(),
         }
     }
@@ -188,23 +193,14 @@ pub struct MarketSummary {
     pub secondary_currency_code: String,
 }
 
-/// Returned by GetOrderBook
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct OrderBook {
-    buy_orders: Vec<OrderType>,
-    sell_orders: Vec<OrderType>,
-    created_timestamp_utc: String,
-    primary_currency_code: String,
-    secondary_currency_code: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
-struct OrderType {
-    order_type: String,
-    price: f32,
-    volume: f32,
+impl Display for MarketSummary {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match serde_json::to_string_pretty(self) {
+            Ok(s) => s,
+            Err(_) => serde_json::to_string(self).expect("failed to deserialize market summary"),
+        };
+        write!(f, "{}", s)
+    }
 }
 
 /// Returned by GetAllOrders
