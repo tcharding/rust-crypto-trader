@@ -20,23 +20,36 @@ pub struct Config {
 
 #[derive(Debug, Deserialize)]
 pub struct Keys {
-    pub read: String,
+    pub read: Key,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Key {
+    pub key: String,
+    pub secret: String,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use spectral::prelude::*;
 
     #[test]
     fn config_works() {
         let config: Config = toml::from_str(
             r#"
         [keys]
-        read = "b2111111-4b1c-4880-b4c4-036d81f3de59"
+
+                [keys.read]
+                key = "b2111111-4b1c-4880-b4c4-036d81f3de59"
+                secret = "11111193333335555558888888111111"
     "#,
         )
         .unwrap();
 
-        assert_eq!(&config.keys.read, "b2111111-4b1c-4880-b4c4-036d81f3de59");
+        let want_key = "b2111111-4b1c-4880-b4c4-036d81f3de59".to_string();
+        let want_secret = "11111193333335555558888888111111".to_string();
+        assert_that!(&config.keys.read.key).is_equal_to(&want_key);
+        assert_that!(&config.keys.read.secret).is_equal_to(&want_secret)
     }
 }

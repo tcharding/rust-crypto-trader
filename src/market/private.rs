@@ -6,6 +6,8 @@ use sha2::Sha256;
 use std::time::{SystemTime, UNIX_EPOCH};
 use url::Url;
 
+const PAGE_SIZE: usize = 25;
+
 // GetOpenOrders
 // GetClosedOrders
 // GetClosedFilledOrders
@@ -29,53 +31,50 @@ use url::Url;
 pub struct Private {
     client: Client,
     keys: Keys,
+    nonce: u64,
 }
 
 #[derive(Debug)]
-pub struct Keys {
-    read: String,
+struct Keys {
+    /// API key with read-only access.
+    read: Key,
+}
+
+#[derive(Debug)]
+struct Key {
+    key: String,
+    secret: String,
 }
 
 impl Private {
     /// Private API URL
     const URL: &'static str = "https://api.independentreserve.com/Private";
 
-    pub fn new(read_key: &str) -> Self {
+    pub fn new(read_key: impl ToString, read_secret: impl ToString) -> Self {
         Self {
             client: Client::new(),
             keys: Keys {
-                read: read_key.to_string(),
+                read: Key {
+                    key: read_key.to_string(),
+                    secret: read_secret.to_string(),
+                },
             },
+            nonce: nonce(),
         }
     }
 
-    // HTTP POST https://api.independentreserve.com/Private/GetOpenOrders
-    // {
-    //     "apiKey":"{api-key}",
-    //     "nonce":{nonce},
-    //     "signature":"{signature}",
-    //     "primaryCurrencyCode":"Xbt",
-    //     "secondaryCurrencyCode":"Usd",
-    //     "pageIndex":1,
-    //     "pageSize":25
-    // }
-
-    pub async fn get_open_orders(&self) -> Result<Orders> {
+    /// API call: GetOpenOrders
+    pub async fn get_open_orders(
+        &mut self,
+        base: &str,
+        quote: &str,
+        page_index: usize,
+    ) -> Result<Orders> {
+        let nonce = self.inc_nonce();
         let url = self.build_url("GetOpenOrders")?;
-        let base = "Xbt".to_string();
-        let quote = "Aud".to_string();
-        let page_index = 1;
-        let page_size = 25;
-        let api_key = "b2f7707a-4b1c-4880-b4c4-036d81f3de59";
-        let nonce = nonce();
+        let body = self.orders_body(url.clone(), nonce, base, quote, page_index);
 
-        let msg = format!("{},apiKey={},nonce={},primaryCurrencyCode={},secondaryCurrencyCode={},pageIndex={},pageSize={}", url, api_key, nonce, base, quote, page_index, page_size);
-        let sig = self.sign_read_only(&msg);
-
-        let params = ParamsOrders::new(api_key, nonce, &sig);
-
-        let res = self.client.post(url).json(&params).send().await?;
-
+        let res = self.client.post(url).json(&body).send().await?;
         if res.status() != StatusCode::OK {
             bail!("api call returned status: {}", res.status())
         }
@@ -86,22 +85,18 @@ impl Private {
         Ok(orders)
     }
 
-    pub async fn get_closed_orders(&self) -> Result<Orders> {
+    /// API call: GetClosedOrders
+    pub async fn get_closed_orders(
+        &mut self,
+        base: &str,
+        quote: &str,
+        page_index: usize,
+    ) -> Result<Orders> {
+        let nonce = self.inc_nonce();
         let url = self.build_url("GetClosedOrders")?;
-        let base = "Xbt".to_string();
-        let quote = "Aud".to_string();
-        let page_index = 1;
-        let page_size = 25;
-        let api_key = "b2f7707a-4b1c-4880-b4c4-036d81f3de59";
-        let nonce = nonce();
+        let body = self.orders_body(url.clone(), nonce, base, quote, page_index);
 
-        let msg = format!("{},apiKey={},nonce={},primaryCurrencyCode={},secondaryCurrencyCode={},pageIndex={},pageSize={}", url, api_key, nonce, base, quote, page_index, page_size);
-        let sig = self.sign_read_only(&msg);
-
-        let params = ParamsOrders::new(api_key, nonce, &sig);
-
-        let res = self.client.post(url).json(&params).send().await?;
-
+        let res = self.client.post(url).json(&body).send().await?;
         if res.status() != StatusCode::OK {
             bail!("api call returned status: {}", res.status())
         }
@@ -120,9 +115,39 @@ impl Private {
         Ok(url)
     }
 
-    // Signs a message with the read only API key.
+    fn orders_body(
+        &self,
+        url: Url,
+        nonce: u64,
+        base: &str,
+        quote: &str,
+        page_index: usize,
+    ) -> OrdersBody {
+        let api_key = self.keys.read.key.clone();
+
+        let msg = format!("{},apiKey={},nonce={},primaryCurrencyCode={},secondaryCurrencyCode={},pageIndex={},pageSize={}", url, api_key, nonce, base, quote, page_index, PAGE_SIZE);
+        let signature = self.sign_read_only(&msg);
+
+        OrdersBody {
+            api_key,
+            nonce,
+            signature,
+            primary_currency_code: base.to_string(),
+            secondary_currency_code: quote.to_string(),
+            page_index,
+            page_size: 25,
+        }
+    }
+
+    // Signs a message with the read only API secret key.
     fn sign_read_only(&self, msg: &str) -> String {
-        sign(msg, &self.keys.read)
+        sign(msg, &self.keys.read.secret)
+    }
+
+    fn inc_nonce(&mut self) -> u64 {
+        let nonce = self.nonce;
+        self.nonce += 1;
+        nonce
     }
 }
 
@@ -161,28 +186,14 @@ fn sign(msg: &str, key: &str) -> String {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ParamsOrders {
+pub struct OrdersBody {
+    signature: String,
     api_key: String,
     nonce: u64,
-    signature: String,
     primary_currency_code: String,
     secondary_currency_code: String,
     page_index: usize,
     page_size: usize,
-}
-
-impl ParamsOrders {
-    fn new(key: &str, nonce: u64, sig: &str) -> Self {
-        Self {
-            api_key: key.to_string(),
-            nonce,
-            signature: sig.to_string(),
-            primary_currency_code: "Xbt".to_string(),
-            secondary_currency_code: "Aud".to_string(),
-            page_index: 1,
-            page_size: 25,
-        }
-    }
 }
 
 /// Returned by GetOpenOrders, GetClosedOrders, GetClosedFilledOrders

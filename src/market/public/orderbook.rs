@@ -35,16 +35,14 @@ impl OrderBook {
     }
 
     /// The price to fill an order of `volume` from the current limit orders.
-    pub fn price_to_fill(&self, order_type: &str, volume: f32) -> f32 {
+    pub fn price_to_fill(&self, _order_type: &str, _volume: f32) -> f32 {
         0.0
     }
 
-    /// Sort the buys and sells in order i.e., for bids: highest to lowest and
-    /// for offers: lowest to highest.
+    /// Sort the buy and sell orders.
+    /// bids: descending order (highest bid fist)
+    /// offers: ascending order (lowest offer first)
     pub fn sort(&mut self) {
-        let mut buys = self.buy_orders.clone();
-        let mut sells = self.sell_orders.clone();
-
         self.sell_orders
             .sort_by(|a, b| a.price.partial_cmp(&b.price).unwrap_or(Ordering::Equal));
 

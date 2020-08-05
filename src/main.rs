@@ -13,40 +13,29 @@ pub async fn main() -> Result<()> {
     let config =
         config::parse(&path).with_context(|| format!("config file: {}", path.display()))?;
 
-    let key = config.keys.read;
-    can_get_orderbook().await; // Test public API.
-    can_get_orders(&key).await; // Test private API.
+    let key = config.keys.read.key;
+    let secret = config.keys.read.secret;
 
-    let spread = rate_and_spread().await?;
-    println!("current minimum spread: {}", spread);
+    assert_public_api().await?;
+    assert_private_api(&key, &secret).await?;
 
     Ok(())
 }
 
-// Test function, cannot be a unit test because we need an API key.
-async fn can_get_orders(key: &str) {
-    let api = Private::new(key);
-    let _ = api.get_open_orders().await.expect("API call failed");
-    // tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
-    // let _ = api.get_closed_orders().await.expect("API call failed");
-}
-
-async fn can_get_orderbook() {
+async fn assert_public_api() -> Result<()> {
     let api = Public::default();
-    let _ = api
-        .get_order_book("Xbt", "Aud")
-        .await
-        .expect("API call failed");
-}
-
-async fn rate_and_spread() -> Result<String> {
-    let api = Public::default();
-    let mut orderbook = api
-        .get_order_book("Xbt", "Aud")
-        .await
-        .expect("API call failed");
+    let mut orderbook = api.get_order_book("Xbt", "Aud").await?;
 
     let s = orderbook.bid_offer_spread();
+    println!("Current bid/offer spread: {}", s);
 
-    Ok(s)
+    Ok(())
+}
+
+async fn assert_private_api(key: &str, secret: &str) -> Result<()> {
+    let mut api = Private::new(key, secret);
+    let _ = api.get_open_orders("Xbt", "Aud", 1).await?;
+    let _ = api.get_closed_orders("Xbt", "Aud", 1).await?;
+
+    Ok(())
 }
