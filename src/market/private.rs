@@ -8,6 +8,9 @@ use url::Url;
 
 const PAGE_SIZE: usize = 25;
 
+// Independent Reserve Private API methods
+//
+// Read-only Key:
 // GetOpenOrders
 // GetClosedOrders
 // GetClosedFilledOrders
@@ -16,14 +19,18 @@ const PAGE_SIZE: usize = 25;
 // GetTransactions
 // GetDigitalCurrencyDepositAddress
 // GetDigitalCurrencyDepositAddresses
-// SynchDigitalCurrencyDepositAddressWithBlockchain
 // GetTrades
 // GetBrokerageFees
+// GetDigitalCurrencyWithdrawal
+//
+// Admin Key:
+// SynchDigitalCurrencyDepositAddressWithBlockchain
 // PlaceLimitOrder
 // PlaceMarketOrder
 // CancelOrder
-// GetDigitalCurrencyWithdrawal
 // WithdrawDigitalCurrency
+//
+// Full access Key:
 // RequestFiatWithdrawal
 
 /// Implements the private methods for Inedependent Reserve crypto exchange API.
@@ -107,6 +114,211 @@ impl Private {
         Ok(orders)
     }
 
+    /// API call: GetClosedFilledOrders
+    pub async fn get_closed_filled_orders(
+        &mut self,
+        base: &str,
+        quote: &str,
+        page_index: usize,
+    ) -> Result<Orders> {
+        let nonce = self.inc_nonce();
+        let url = self.build_url("GetClosedFilledOrders")?;
+        let body = self.orders_body(url.clone(), nonce, base, quote, page_index);
+
+        let res = self.client.post(url).json(&body).send().await?;
+        if res.status() != StatusCode::OK {
+            bail!("api call returned status: {}", res.status())
+        }
+
+        let body = res.text().await?;
+        let orders: Orders = serde_json::from_str(&body)?;
+
+        Ok(orders)
+    }
+
+    /// API call: GetOrderDetails
+    pub async fn get_order_details(
+        &mut self,
+        order_guid: &str, // "c7347e4c-b865-4c94-8f74-d934d4b0b177"
+    ) -> Result<OrderDetails> {
+        let nonce = self.inc_nonce();
+        let url = self.build_url("GetOrderDetails")?;
+        let body = self.order_guid_body(url.clone(), nonce, order_guid);
+
+        let res = self.client.post(url).json(&body).send().await?;
+        if res.status() != StatusCode::OK {
+            bail!("api call returned status: {}", res.status())
+        }
+
+        let body = res.text().await?;
+        let details: OrderDetails = serde_json::from_str(&body)?;
+
+        Ok(details)
+    }
+
+    /// API call: GetAccounts
+    pub async fn get_accounts(&mut self) -> Result<Accounts> {
+        let nonce = self.inc_nonce();
+        let url = self.build_url("GetAccounts")?;
+        let body = self.simple_body(url.clone(), nonce);
+
+        let res = self.client.post(url).json(&body).send().await?;
+        if res.status() != StatusCode::OK {
+            bail!("api call returned status: {}", res.status())
+        }
+
+        let body = res.text().await?;
+        let accounts: Accounts = serde_json::from_str(&body)?;
+
+        Ok(accounts)
+    }
+
+    /// API call: GetTransactions
+    pub async fn get_transactions(
+        &mut self,
+        _a_ccount_guuid: &str,        // "49994921-60ec-411e-8a78-d0eba078d5e9"
+        _f_rom: Option<&str>,         // "2014-08-01T08:00:00Z", ISO 8601 standard
+        _t_o: Option<&str>,           // Same format as `from`
+        _tx_types: Option<Vec<&str>>, // ["Brokerage","Trade"]
+        _page_index: usize,
+    ) -> Result<Transactions> {
+        // {
+        //     "apiKey":"{api-key}",
+        //     "nonce":{nonce},
+        //     "signature":"{signature}",
+        //     "accountGuid":
+        //     "fromTimestampUtc":"2014-08-01T09:00:00Z",
+        //     "toTimestampUtc":null,
+        //     "txTypes":
+        //     "pageIndex":1,
+        //     "pageSize":25
+        // }
+        unimplemented!()
+    }
+
+    /// API call: GetDigitalCurrencyDepositAddress
+    pub async fn get_digital_currency_deposit_address(
+        &mut self,
+        primary_currency_code: &str, // "Xbt"
+    ) -> Result<DigitalCurrencyDepositAddress> {
+        let nonce = self.inc_nonce();
+        let url = self.build_url("GetDigitalCurrencyDepositAddress")?;
+        let body = self.currency_body(url.clone(), nonce, primary_currency_code);
+
+        let res = self.client.post(url).json(&body).send().await?;
+        if res.status() != StatusCode::OK {
+            bail!("api call returned status: {}", res.status())
+        }
+
+        let body = res.text().await?;
+        let address: DigitalCurrencyDepositAddress = serde_json::from_str(&body)?;
+
+        Ok(address)
+    }
+
+    /// API call: GetDigitalCurrencyDepositAddresses
+    pub async fn get_digital_currency_deposit_addresses(
+        &mut self,
+        currency: &str, // "Xbt"
+        page_index: usize,
+    ) -> Result<DigitalCurrencyDepositAddresses> {
+        let nonce = self.inc_nonce();
+        let url = self.build_url("GetDigitalCurrencyDepositAddresses")?;
+        let body = self.currency_page_index_body(url.clone(), nonce, currency, page_index);
+
+        let res = self.client.post(url).json(&body).send().await?;
+        if res.status() != StatusCode::OK {
+            bail!("api call returned status: {}", res.status())
+        }
+
+        let body = res.text().await?;
+        let addresses: DigitalCurrencyDepositAddresses = serde_json::from_str(&body)?;
+
+        Ok(addresses)
+    }
+
+    /// API call: GetTrades
+    pub async fn get_trades(&mut self, page_index: usize) -> Result<Trades> {
+        let nonce = self.inc_nonce();
+        let url = self.build_url("GetTrades")?;
+        let body = self.page_index_body(url.clone(), nonce, page_index);
+
+        let res = self.client.post(url).json(&body).send().await?;
+        if res.status() != StatusCode::OK {
+            bail!("api call returned status: {}", res.status())
+        }
+
+        let body = res.text().await?;
+        let trades: Trades = serde_json::from_str(&body)?;
+
+        Ok(trades)
+    }
+
+    /// API call: GetBrokerageFees
+    pub async fn get_brokerage_fees(&mut self) -> Result<BrokerageFees> {
+        let nonce = self.inc_nonce();
+        let url = self.build_url("GetBrokerageFees")?;
+        let body = self.simple_body(url.clone(), nonce);
+
+        let res = self.client.post(url).json(&body).send().await?;
+        if res.status() != StatusCode::OK {
+            bail!("api call returned status: {}", res.status())
+        }
+
+        let body = res.text().await?;
+        let fees: BrokerageFees = serde_json::from_str(&body)?;
+
+        Ok(fees)
+    }
+
+    /// API call: GetDigitalCurrencyWithdrawal
+    pub async fn get_digital_currency_withdrawal(
+        &mut self,
+        tx_guid: &str, // "2a93732f-3f40-4685-b3bc-ff3ec326090d",
+    ) -> Result<DigitalCurrencyWithdrawal> {
+        let nonce = self.inc_nonce();
+        let url = self.build_url("GetDigitalCurrencyWithdrawal")?;
+        let body = self.tx_guid_body(url.clone(), nonce, tx_guid);
+
+        let res = self.client.post(url).json(&body).send().await?;
+        if res.status() != StatusCode::OK {
+            bail!("api call returned status: {}", res.status())
+        }
+
+        let body = res.text().await?;
+        let withdrawal: DigitalCurrencyWithdrawal = serde_json::from_str(&body)?;
+
+        Ok(withdrawal)
+    }
+
+    /// API call: SyncDigitalCurrencyDepositAddressWithBlockchain
+    pub async fn sync_digital_currency_deposit_address_with_blockchain(
+        &mut self,
+        _tx_guuid: &str,
+    ) -> Result<DigitalCurrencyDepositAddress> {
+        // {
+        //     "apiKey":"{api-key}",
+        //     "nonce":{nonce},
+        //     "signature":"{signature}",
+        //     "depositAddress":"12a7FbBzSGvJd36wNesAxAksLXMWm4oLUJ",
+        //     "primaryCurrencyCode":"Bch"
+        // }
+        // let nonce = self.inc_nonce();
+        // let url = self.build_url("SyncDigitalCurrencyDepositAddressWithBlockchain")?;
+        // let body = self.currency_body(url.clone(), nonce, primary_currency_code);
+
+        // let res = self.client.post(url).json(&body).send().await?;
+        // if res.status() != StatusCode::OK {
+        //     bail!("api call returned status: {}", res.status())
+        // }
+
+        // let body = res.text().await?;
+        // let address: DigitalCurrencyDepositAddress = serde_json::from_str(&body)?;
+
+        // Ok(address)
+        unimplemented!()
+    }
+
     // Build a URL from the Public API URL plus given path.
     fn build_url(&self, path: &str) -> Result<Url> {
         let s = format!("{}/{}", Self::URL, path);
@@ -136,6 +348,113 @@ impl Private {
             secondary_currency_code: quote.to_string(),
             page_index,
             page_size: 25,
+        }
+    }
+
+    fn simple_body(&self, url: Url, nonce: u64) -> SimpleBody {
+        let api_key = self.keys.read.key.clone();
+
+        let msg = format!("{},apiKey={},nonce={}", url, api_key, nonce);
+        let signature = self.sign_read_only(&msg);
+
+        SimpleBody {
+            api_key,
+            nonce,
+            signature,
+        }
+    }
+
+    fn order_guid_body(&self, url: Url, nonce: u64, guid: &str) -> OrderGuidBody {
+        let api_key = self.keys.read.key.clone();
+
+        let msg = format!(
+            "{},apiKey={},nonce={},orderGuid={}",
+            url, api_key, nonce, guid
+        );
+        let signature = self.sign_read_only(&msg);
+
+        OrderGuidBody {
+            api_key,
+            nonce,
+            order_guid: guid.to_string(),
+            signature,
+        }
+    }
+
+    fn currency_body(&self, url: Url, nonce: u64, currency: &str) -> CurrencyBody {
+        let api_key = self.keys.read.key.clone();
+
+        let msg = format!(
+            "{},apiKey={},nonce={},primaryCurrencyCode={}",
+            url, api_key, nonce, currency,
+        );
+        let signature = self.sign_read_only(&msg);
+
+        CurrencyBody {
+            api_key,
+            nonce,
+            primary_currency_code: currency.to_string(),
+            signature,
+        }
+    }
+
+    fn tx_guid_body(&self, url: Url, nonce: u64, guid: &str) -> TxGuidBody {
+        let api_key = self.keys.read.key.clone();
+
+        let msg = format!(
+            "{},apiKey={},nonce={},transactionGuid={}",
+            url, api_key, nonce, guid
+        );
+        let signature = self.sign_read_only(&msg);
+
+        TxGuidBody {
+            api_key,
+            nonce,
+            transaction_guid: guid.to_string(),
+            signature,
+        }
+    }
+
+    fn page_index_body(&self, url: Url, nonce: u64, page_index: usize) -> PageIndexBody {
+        let api_key = self.keys.read.key.clone();
+
+        let msg = format!(
+            "{},apiKey={},nonce={},pageIndex={},pageSize={}",
+            url, api_key, nonce, page_index, PAGE_SIZE
+        );
+        let signature = self.sign_read_only(&msg);
+
+        PageIndexBody {
+            api_key,
+            nonce,
+            page_index,
+            page_size: PAGE_SIZE,
+            signature,
+        }
+    }
+
+    fn currency_page_index_body(
+        &self,
+        url: Url,
+        nonce: u64,
+        currency: &str,
+        page_index: usize,
+    ) -> CurrencyPageIndexBody {
+        let api_key = self.keys.read.key.clone();
+
+        let msg = format!(
+            "{},apiKey={},nonce={},primaryCurrencyCode={},pageIndex={},pageSize={}",
+            url, api_key, nonce, currency, page_index, PAGE_SIZE,
+        );
+        let signature = self.sign_read_only(&msg);
+
+        CurrencyPageIndexBody {
+            api_key,
+            nonce,
+            primary_currency_code: currency.to_string(),
+            page_index,
+            page_size: PAGE_SIZE,
+            signature,
         }
     }
 
@@ -174,16 +493,6 @@ fn sign(msg: &str, key: &str) -> String {
     hex::encode(code_bytes)
 }
 
-// {
-//     "apiKey":"{api-key}",
-//     "nonce":{nonce},
-//     "signature":"{signature}",
-//     "primaryCurrencyCode":"Xbt",
-//     "secondaryCurrencyCode":"Usd",
-//     "pageIndex":1,
-//     "pageSize":25
-// }
-
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrdersBody {
@@ -192,6 +501,62 @@ pub struct OrdersBody {
     nonce: u64,
     primary_currency_code: String,
     secondary_currency_code: String,
+    page_index: usize,
+    page_size: usize,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SimpleBody {
+    signature: String,
+    api_key: String,
+    nonce: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrderGuidBody {
+    signature: String,
+    api_key: String,
+    nonce: u64,
+    order_guid: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CurrencyBody {
+    signature: String,
+    api_key: String,
+    nonce: u64,
+    primary_currency_code: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TxGuidBody {
+    signature: String,
+    api_key: String,
+    nonce: u64,
+    transaction_guid: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PageIndexBody {
+    signature: String,
+    api_key: String,
+    nonce: u64,
+    page_index: usize,
+    page_size: usize,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CurrencyPageIndexBody {
+    signature: String,
+    api_key: String,
+    nonce: u64,
+    primary_currency_code: String,
     page_index: usize,
     page_size: usize,
 }
@@ -223,12 +588,6 @@ pub struct Order {
     volume: f32,
 }
 
-// {
-//     "apiKey":"{api-key}",
-//     "nonce":{nonce},
-//     "signature":"{signature}",
-//     "orderGuid":"c7347e4c-b865-4c94-8f74-d934d4b0b177"
-// }
 /// Returned by GetOrderDetails
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -246,11 +605,7 @@ pub struct OrderDetails {
     primary_currency_code: String,
     secondary_currency_code: String,
 }
-// {
-//     "apiKey":"{api-key}",
-//     "nonce":{nonce},
-//     "signature":"{signature}",
-// }
+
 /// Returned by GetAccounts
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -266,17 +621,6 @@ pub struct Account {
     total_balance: f32,
 }
 
-// {
-// "apiKey":"{api-key}",
-// "nonce":{nonce},
-// "signature":"{signature}",
-// "accountGuid":"49994921-60ec-411e-8a78-d0eba078d5e9",
-// "fromTimestampUtc":"2014-08-01T09:00:00Z",
-// "toTimestampUtc":null,
-// "txTypes":["Brokerage","Trade"]
-// "pageIndex":1,
-// "pageSize":25
-// },
 /// Returned by GetTransactions
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -305,14 +649,16 @@ pub struct Transaction {
     type_: String,
 }
 
-// {
-//     "apiKey":"{api-key}",
-//     "nonce":{nonce},
-//     "signature":"{signature}",
-//     "primaryCurrencyCode":"Xbt",
-//     "pageIndex": 1,
-//     "pageSize": 10
-// }
+/// Returned by GetDigitalCurrencyDepositAddress,
+/// SyncDigitalCurrencyDepositAddressWithBlockchain
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct DigitalCurrencyDepositAddress {
+    deposit_address: String,
+    last_checked_timestamp_utc: String,
+    next_update_timestamp_utc: String,
+}
+
 /// Returned by GetDigitalCurrencyDepositAddresses
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -323,56 +669,6 @@ pub struct DigitalCurrencyDepositAddresses {
     data: Vec<DigitalCurrencyDepositAddress>,
 }
 
-// { SynchDigitalCurrencyDepositAddressWithBlockchain
-//     "apiKey":"{api-key}",
-//     "nonce":{nonce},
-//     "signature":"{signature}",
-//     "depositAddress":"12a7FbBzSGvJd36wNesAxAksLXMWm4oLUJ",
-//     "primaryCurrencyCode":"Bch"
-// }
-
-// { GetDigitalCurrencyDepositAddress
-//     "apiKey":"{api-key}",
-//     "nonce":{nonce},
-//     "signature":"{signature}",
-//     "primaryCurrencyCode":"Xbt"
-// }
-/// Returned by GetDigitalCurrencyDepositAddress,
-/// SynchDigitalCurrencyDepositAddressWithBlockchain
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct DigitalCurrencyDepositAddress {
-    deposit_address: String,
-    last_checked_timestamp_utc: String,
-    next_update_timestamp_utc: String,
-}
-
-// {
-//     "apiKey":"{api-key}",
-//     "nonce":{nonce},
-//     "signature":"{signature}",
-//     "transactionGuid":"2a93732f-3f40-4685-b3bc-ff3ec326090d",
-// }
-/// Returned by GetDigitalCurrencyWithdrawal
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct GetDigitalCurrencyWithdrawal {
-    transaction_guid: String,
-    primary_currency_code: String,
-    created_timestamp_utc: String,
-    amount: Amount,
-    destination: Destination,
-    status: String,
-    transaction: String,
-}
-
-// {
-//     "apiKey":"{api-key}",
-//     "nonce":{nonce},
-//     "signature":"{signature}",
-//     "pageIndex":1,
-//     "pageSize":5
-// }
 /// Returned by GetTrades
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -397,11 +693,6 @@ pub struct Trade {
     secondary_currency_code: String,
 }
 
-// {
-//     "apiKey":"{api-key}",
-//     "nonce":{nonce},
-//     "signature":"{signature}",
-// }
 /// Returned by GetBrokerageFees
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -414,17 +705,6 @@ pub struct Fees {
     fee: f32,
 }
 
-// {
-//     "apiKey":"{api-key}",
-//     "nonce":{nonce},
-//     "signature":"{signature}",
-//     "primaryCurrencyCode":"Xbt",
-//     "secondaryCurrencyCode":"Usd",
-//     "orderType": "LimitBid",
-//     "price": 485.76,
-//     "volume": 0.358
-// }
-// {
 /// Returned by PlaceLimitOrder
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -475,16 +755,6 @@ pub struct CancelOrder {
     secondary_currency_code: String,
 }
 
-// {
-//     "apiKey":"{api-key}",
-//     "nonce":{nonce},
-//     "signature":"{signature}",
-//     "amount":0.123,
-//     "withdrawalAddress":"1BP2wi6UxQwG3oDuDj2V2Rvgu6PMJnJu61",
-//     "comment":"",
-//     "primaryCurrencyCode":"Bch"
-//     "destinationTag":"123456"
-// }
 /// Returned by WithdrawDigitalCurrency
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -512,15 +782,6 @@ pub struct Destination {
     tag: String,
 }
 
-// {
-//     "apiKey":"{api-key}",
-//     "nonce":{nonce},
-//     "signature":"{signature}",
-//     "secondaryCurrencyCode":"{secondaryCurrencyCode}",
-//     "withdrawalAmount":"{withdrawalAmount}",
-//     "withdrawalBankAccountName":"{withdrawalBankAccountName}",
-//     "comment":"{comment}"
-// }
 /// Returned by RequestFiatwithdrawal
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]

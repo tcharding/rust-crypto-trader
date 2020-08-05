@@ -8,6 +8,8 @@ use url::Url;
 
 pub use orderbook::*;
 
+// Independent Reserve Public API methods
+//
 // GetValidPrimaryCurrencyCodes
 // GetValidSecondaryCurrencyCodes
 // GetValidLimitOrderTypes
@@ -105,12 +107,18 @@ impl Public {
     }
 
     /// API call: GetTradeHistorySummary
-    pub async fn get_trade_history(&self, base: &str, quote: &str) -> Result<TradeHistorySummary> {
+    pub async fn get_trade_history_summary(
+        &self,
+        base: &str,
+        quote: &str,
+        hours_past: usize,
+    ) -> Result<TradeHistorySummary> {
         let url = self.build_url("GetTradeHistorySummary")?;
 
         let url = Url::parse_with_params(url.as_str(), &[
             ("primaryCurrencyCode", base),
             ("secondaryCurrencyCode", quote),
+            ("numberOfHoursInThePastToRetrieve", &hours_past.to_string()),
         ])?;
 
         let body = self.client.get(url).send().await?.text().await?;
@@ -125,7 +133,7 @@ impl Public {
         base: &str,
         quote: &str,
         num_trades: usize,
-    ) -> Result<TradeHistorySummary> {
+    ) -> Result<RecentTrades> {
         let url = self.build_url("GetRecentTrades")?;
 
         let url = Url::parse_with_params(url.as_str(), &[
@@ -135,7 +143,7 @@ impl Public {
         ])?;
 
         let body = self.client.get(url).send().await?.text().await?;
-        let res: TradeHistorySummary = serde_json::from_str(&body)?;
+        let res: RecentTrades = serde_json::from_str(&body)?;
 
         Ok(res)
     }
@@ -227,7 +235,7 @@ pub struct OrderGuid {
 #[serde(rename_all = "PascalCase")]
 pub struct TradeHistorySummary {
     history_summary_items: Vec<HistorySummary>,
-    number_of_hours_in_the_past_to_retrieve: f32,
+    number_of_hours_in_the_past_to_retrieve: usize,
     created_timestamp_utc: String,
     primary_currency_code: String,
     secondary_currency_code: String,
@@ -236,16 +244,16 @@ pub struct TradeHistorySummary {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct HistorySummary {
-    average_secondary_currency_price: String,
-    closing_secondary_currency_price: f32,
     start_timestamp_utc: String,
     end_timestamp_utc: String,
-    highest_secondary_currency_price: f32,
-    lowest_secondary_currency_price: f32,
-    number_of_trades: f32,
-    opening_secondary_currency_price: f32,
     primary_currency_volume: f32,
     secondary_currency_volume: f32,
+    opening_secondary_currency_price: f32,
+    closing_secondary_currency_price: f32,
+    highest_secondary_currency_price: f32,
+    lowest_secondary_currency_price: f32,
+    average_secondary_currency_price: f32,
+    number_of_trades: usize,
 }
 
 /// Returned by GetRecentTrades
@@ -405,7 +413,7 @@ mod tests {
     async fn can_get_trade_history_summary_xbt_aud() {
         let api = Public::default();
         let _ = api
-            .get_all_orders("Xbt", "Aud")
+            .get_trade_history_summary("Xbt", "Aud", 1)
             .await
             .expect("API call failed");
     }

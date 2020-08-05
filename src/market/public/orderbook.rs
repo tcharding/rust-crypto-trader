@@ -76,13 +76,13 @@ mod tests {
     use super::*;
     use float_cmp::approx_eq;
 
-    fn buy_order(price: f32, volume: f32) -> OrderType {
-        OrderType {
-            order_type: "buy".to_string(),
-            price,
-            volume,
-        }
-    }
+    // fn buy_order(price: f32, volume: f32) -> OrderType {
+    //     OrderType {
+    //         order_type: "buy".to_string(),
+    //         price,
+    //         volume,
+    //     }
+    // }
 
     #[test]
     fn truncating_works() {
@@ -92,22 +92,22 @@ mod tests {
         assert!(approx_eq!(f32, got, want))
     }
 
-    #[test]
-    fn price_to_fill_order() {
-        let mut buys = vec![];
-        buys.push(buy_order(1500.00, 0.9));
-        buys.push(buy_order(1550.00, 1.0));
+    // #[test]
+    // fn price_to_fill_order() {
+    //     let mut buys = vec![];
+    //     buys.push(buy_order(1500.00, 0.9));
+    //     buys.push(buy_order(1550.00, 1.0));
 
-        let orders = OrderBook {
-            buy_orders: buys,
-            sell_orders: vec![],
-            created_timestamp_utc: "nil".to_string(),
-            primary_currency_code: "nil".to_string(),
-            secondary_currency_code: "nil".to_string(),
-        };
+    //     let orders = OrderBook {
+    //         buy_orders: buys,
+    //         sell_orders: vec![],
+    //         created_timestamp_utc: "nil".to_string(),
+    //         primary_currency_code: "nil".to_string(),
+    //         secondary_currency_code: "nil".to_string(),
+    //     };
 
-        let want = 1545.0;
-        let got = orders.price_to_fill("buy", 1.0);
-        assert!(approx_eq!(f32, got, want))
-    }
+    //     let want = 1545.0;
+    //     let got = orders.price_to_fill("buy", 1.0);
+    //     assert!(approx_eq!(f32, got, want))
+    // }
 }
