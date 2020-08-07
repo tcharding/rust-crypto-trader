@@ -1,12 +1,8 @@
-mod orderbook;
-
 use anyhow::Result;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
 use url::Url;
-
-pub use orderbook::*;
 
 // Independent Reserve Public API methods
 //
@@ -24,6 +20,7 @@ pub use orderbook::*;
 // GetFxRates
 
 /// Implements the public methods for Inedependent Reserve crypto exchange API.
+#[derive(Clone, Debug)]
 pub struct Public {
     client: Client,
 }
@@ -182,6 +179,25 @@ impl Default for Public {
             client: Client::new(),
         }
     }
+}
+
+/// Returned by GetOrderBook.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct OrderBook {
+    pub buy_orders: Vec<OrderType>,
+    pub sell_orders: Vec<OrderType>,
+    created_timestamp_utc: String,
+    primary_currency_code: String,
+    secondary_currency_code: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct OrderType {
+    pub order_type: String,
+    pub price: f32,
+    pub volume: f32,
 }
 
 /// Returned by GetMarketSummary

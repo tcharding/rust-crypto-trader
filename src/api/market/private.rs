@@ -3,7 +3,6 @@ use hmac::{Hmac, Mac, NewMac};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
-use std::time::{SystemTime, UNIX_EPOCH};
 use url::Url;
 
 const PAGE_SIZE: usize = 25;
@@ -34,20 +33,20 @@ const PAGE_SIZE: usize = 25;
 // RequestFiatWithdrawal
 
 /// Implements the private methods for Inedependent Reserve crypto exchange API.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Private {
     client: Client,
     keys: Keys,
     nonce: u64,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Keys {
     /// API key with read-only access.
     read: Key,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Key {
     key: String,
     secret: String,
@@ -57,7 +56,7 @@ impl Private {
     /// Private API URL
     const URL: &'static str = "https://api.independentreserve.com/Private";
 
-    pub fn new(read_key: impl ToString, read_secret: impl ToString) -> Self {
+    pub fn new(nonce: u64, read_key: impl ToString, read_secret: impl ToString) -> Self {
         Self {
             client: Client::new(),
             keys: Keys {
@@ -66,7 +65,7 @@ impl Private {
                     secret: read_secret.to_string(),
                 },
             },
-            nonce: nonce(),
+            nonce,
         }
     }
 
@@ -470,15 +469,6 @@ impl Private {
     }
 }
 
-fn nonce() -> u64 {
-    let start = SystemTime::now();
-    let since_epoch = start
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards");
-
-    since_epoch.as_secs()
-}
-
 type HmacSha256 = Hmac<Sha256>;
 
 // Returns hex representation of signed message.
@@ -493,7 +483,7 @@ fn sign(msg: &str, key: &str) -> String {
     hex::encode(code_bytes)
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrdersBody {
     signature: String,
@@ -505,7 +495,7 @@ pub struct OrdersBody {
     page_size: usize,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SimpleBody {
     signature: String,
@@ -513,7 +503,7 @@ pub struct SimpleBody {
     nonce: u64,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrderGuidBody {
     signature: String,
@@ -522,7 +512,7 @@ pub struct OrderGuidBody {
     order_guid: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CurrencyBody {
     signature: String,
@@ -531,7 +521,7 @@ pub struct CurrencyBody {
     primary_currency_code: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TxGuidBody {
     signature: String,
@@ -540,7 +530,7 @@ pub struct TxGuidBody {
     transaction_guid: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PageIndexBody {
     signature: String,
@@ -550,7 +540,7 @@ pub struct PageIndexBody {
     page_size: usize,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CurrencyPageIndexBody {
     signature: String,
@@ -562,7 +552,7 @@ pub struct CurrencyPageIndexBody {
 }
 
 /// Returned by GetOpenOrders, GetClosedOrders, GetClosedFilledOrders
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Orders {
     total_items: usize,
@@ -571,7 +561,7 @@ pub struct Orders {
     data: Vec<Order>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Order {
     avg_price: f32,
@@ -589,7 +579,7 @@ pub struct Order {
 }
 
 /// Returned by GetOrderDetails
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct OrderDetails {
     order_guid: String,
@@ -607,11 +597,11 @@ pub struct OrderDetails {
 }
 
 /// Returned by GetAccounts
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Accounts(Vec<Account>);
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Account {
     account_guid: String,
@@ -622,7 +612,7 @@ pub struct Account {
 }
 
 /// Returned by GetTransactions
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Transactions {
     total_items: usize,
@@ -631,7 +621,7 @@ pub struct Transactions {
     data: Vec<Transaction>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Transaction {
     balance: f32,
@@ -651,7 +641,7 @@ pub struct Transaction {
 
 /// Returned by GetDigitalCurrencyDepositAddress,
 /// SyncDigitalCurrencyDepositAddressWithBlockchain
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct DigitalCurrencyDepositAddress {
     deposit_address: String,
@@ -756,7 +746,7 @@ pub struct CancelOrder {
 }
 
 /// Returned by WithdrawDigitalCurrency
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct DigitalCurrencyWithdrawal {
     transaction_guid: String,
@@ -768,14 +758,14 @@ pub struct DigitalCurrencyWithdrawal {
     transaction: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Amount {
     total: f32,
     fee: f32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Destination {
     address: String,
@@ -783,7 +773,7 @@ pub struct Destination {
 }
 
 /// Returned by RequestFiatwithdrawal
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct RequestFiatwithdrawal {
     account_guid: String,

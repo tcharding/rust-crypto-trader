@@ -13,17 +13,19 @@ pub fn parse(path: &Path) -> Result<Config> {
     Ok(config)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Config {
     pub keys: Keys,
 }
-
-#[derive(Debug, Deserialize)]
+/// Keys needed to access the private API methods.
+#[derive(Clone, Debug, Deserialize)]
 pub struct Keys {
+    /// Read-only API access.
     pub read: Key,
 }
 
-#[derive(Debug, Deserialize)]
+/// A single key, made up of public and private parts.
+#[derive(Clone, Debug, Deserialize)]
 pub struct Key {
     pub key: String,
     pub secret: String,
