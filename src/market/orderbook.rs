@@ -1,6 +1,4 @@
-use crate::market;
-use std::convert::TryFrom;
-use tracing::debug;
+use crate::market::{api, Price, Volume};
 
 #[derive(Clone, Debug)]
 pub struct OrderBook {
@@ -10,11 +8,73 @@ pub struct OrderBook {
     pub sells: Vec<Order>,
 }
 
+impl OrderBook {
+    /// Returns the current best bid/offer spread.
+    pub fn bid_ask_spread(&self) -> String {
+        if self.buys.is_empty() || self.sells.is_empty() {
+            return "no bid/ask data".to_string();
+        }
+
+        let highest_bid = self.buys.first().unwrap();
+        let lowest_ask = self.sells.first().unwrap();
+
+        let bid = highest_bid.price;
+        let ask = lowest_ask.price;
+
+        let bid_volume = highest_bid.volume;
+        let ask_volume = lowest_ask.volume;
+
+        let mmr = (bid + ask) / 2;
+        let spread = ask - bid;
+        let percentage = spread / mmr;
+
+        format!(
+            "{}({})/{}({}) mmr={} spread={} %={}",
+            bid,
+            bid_volume,
+            ask,
+            ask_volume,
+            mmr,
+            spread,
+            percentage.to_percentage(),
+        )
+    }
+}
+
+impl From<api::OrderBook> for OrderBook {
+    fn from(orderbook: api::OrderBook) -> Self {
+        let mut buys = Vec::with_capacity(orderbook.buy_orders.len());
+        for order in orderbook.buy_orders.iter() {
+            buys.push(order.into());
+        }
+        //        buys.sort_unstable_by(|a, b| a.price.cmp(&b.price).reverse());
+
+        let mut sells = Vec::with_capacity(orderbook.sell_orders.len());
+        for order in orderbook.sell_orders.iter() {
+            sells.push(order.into());
+        }
+        //        sells.sort_unstable_by(|a, b| a.price.cmp(&b.price));
+
+        OrderBook { buys, sells }
+    }
+}
+
+/// Limit order.
 #[derive(Clone, Copy, Debug)]
 pub struct Order {
     position: Position,
-    price: Num,
-    volume: Num,
+    price: Price,
+    volume: Volume,
+}
+
+impl From<&api::PublicOrder> for Order {
+    fn from(order: &api::PublicOrder) -> Self {
+        Order {
+            position: order.order_type.into(),
+            price: order.price.into(),
+            volume: order.volume.into(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -23,75 +83,11 @@ enum Position {
     Sell,
 }
 
-impl OrderBook {
-    /// Returns the current best bid/offer spread.
-    pub fn bid_offer_spread(&self) -> String {
-        if self.buys.is_empty() || self.sells.is_empty() {
-            return "no bid/ask data".to_string();
+impl From<api::OrderType> for Position {
+    fn from(pos: api::OrderType) -> Self {
+        match pos {
+            api::OrderType::Buy => Position::Buy,
+            api::OrderType::Sell => Position::Sell,
         }
-
-        let highest_bid = self.buys.first().unwrap().price;
-        let lowest_offer = self.sells.first().unwrap().price;
-
-        let spread = lowest_offer - highest_bid;
-
-        format!("{}/{} {}", highest_bid, lowest_offer, spread.to_string())
     }
 }
-
-#[allow(clippy::fallible_impl_from)]
-impl From<market::OrderBook> for OrderBook {
-    fn from(orderbook: market::OrderBook) -> Self {
-        let mut buys = Vec::with_capacity(orderbook.buy_orders.len());
-        for order in orderbook.buy_orders.iter() {
-            debug_assert!(order.order_type == "LimitBid");
-            match Order::try_from(order) {
-                Ok(o) => {
-                    println!("{} {}", order.price, o.price);
-                    buys.push(o);
-                }
-                Err(e) => debug!("failed to parse order: {}", e),
-            }
-        }
-        buys.sort_unstable_by(|a, b| a.price.cmp(&b.price).reverse());
-
-        let mut sells = Vec::with_capacity(orderbook.sell_orders.len());
-        for order in orderbook.sell_orders.iter() {
-            debug_assert!(order.order_type == "LimitOffer");
-            match Order::try_from(order) {
-                Ok(o) => sells.push(o),
-                Err(e) => debug!("failed to parse order: {}", e),
-            }
-        }
-
-        sells.sort_unstable_by(|a, b| a.price.cmp(&b.price));
-
-        OrderBook { buys, sells }
-    }
-}
-
-impl TryFrom<&market::OrderType> for Order {
-    type Error = ApiMalformedData;
-
-    fn try_from(order: &market::OrderType) -> Result<Self, Self::Error> {
-        let position = match order.order_type.as_ref() {
-            "LimitBid" => Position::Buy,
-            "LimitOffer" => Position::Sell,
-            other => {
-                return Err(ApiMalformedData(other.to_string()));
-            }
-        };
-        let price = Num::from(order.price);
-        let volume = Num::from(order.volume);
-
-        Ok(Order {
-            position,
-            price,
-            volume,
-        })
-    }
-}
-
-#[derive(Clone, Debug, thiserror::Error)]
-#[error("Malformed data returned by API call: {0}")]
-pub struct ApiMalformedData(String);

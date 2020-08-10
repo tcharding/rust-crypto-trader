@@ -186,19 +186,28 @@ impl Default for Public {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct OrderBook {
-    pub buy_orders: Vec<OrderType>,
-    pub sell_orders: Vec<OrderType>,
+    pub buy_orders: Vec<PublicOrder>,
+    pub sell_orders: Vec<PublicOrder>,
     created_timestamp_utc: String,
     primary_currency_code: String,
     secondary_currency_code: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
-pub struct OrderType {
-    pub order_type: String,
+pub struct PublicOrder {
+    pub order_type: OrderType,
     pub price: Decimal,
     pub volume: Decimal,
+}
+
+// TODO: Add enums for all the other String return types.
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+pub enum OrderType {
+    #[serde(rename = "LimitBid")]
+    Buy,
+    #[serde(rename = "LimitOffer")]
+    Sell,
 }
 
 /// Returned by GetMarketSummary

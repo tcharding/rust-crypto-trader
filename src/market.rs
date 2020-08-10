@@ -7,13 +7,15 @@
 
 #[allow(dead_code)] // Don't warn if we do not use all the API methods.
 mod api;
-// mod orderbook;
+mod num;
+mod orderbook;
 
 use self::api::{Private, Public};
-use crate::Keys;
+use crate::Key;
 use anyhow::Result;
 
-// pub use orderbook::*;
+pub use num::*;
+pub use orderbook::*;
 pub use test::*;
 
 /// Primary currency (base).
@@ -24,22 +26,33 @@ const SEC: &str = "Aud";
 #[derive(Clone, Debug)]
 pub struct Market {
     public: Public,
-    private: Private,
+    private: Option<Private>,
 }
 
 impl Market {
-    pub fn new(keys: Keys) -> Self {
+    pub fn with_read_only(self, read: Key) -> Self {
         let nonce = crate::nonce();
-        let private = Private::new(nonce, keys.read.key, keys.read.secret);
-        let public = Public::default();
+        let private = Private::new(nonce, read.key, read.secret);
 
-        Market { public, private }
+        Market {
+            public: self.public,
+            private: Some(private),
+        }
     }
 
-    // pub async fn order_book(&self) -> Result<OrderBook> {
-    //     let order_book = self.public.get_order_book(PRI, SEC).await?;
-    //     Ok(order_book.into())
-    // }
+    pub async fn order_book(&self) -> Result<OrderBook> {
+        let order_book = self.public.get_order_book(PRI, SEC).await?;
+        Ok(order_book.into())
+    }
+}
+
+impl Default for Market {
+    fn default() -> Self {
+        Market {
+            public: Public::default(),
+            private: None,
+        }
+    }
 }
 
 mod test {
