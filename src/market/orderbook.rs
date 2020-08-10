@@ -1,5 +1,4 @@
-use super::market;
-use crate::Num;
+use crate::market;
 use std::convert::TryFrom;
 use tracing::debug;
 

@@ -1,6 +1,7 @@
 use anyhow::{bail, Result};
 use hmac::{Hmac, Mac, NewMac};
 use reqwest::{Client, StatusCode};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use url::Url;
@@ -564,18 +565,18 @@ pub struct Orders {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Order {
-    avg_price: f32,
+    avg_price: Decimal,
     created_timestamp_utc: String,
-    fee_percent: f32,
+    fee_percent: Decimal,
     order_guid: String,
     order_type: String,
-    outstanding: f32,
-    price: f32,
+    outstanding: Decimal,
+    price: Decimal,
     primary_currency_code: String,
     secondary_currency_code: String,
     status: String,
-    value: f32,
-    volume: f32,
+    value: Decimal,
+    volume: Decimal,
 }
 
 /// Returned by GetOrderDetails
@@ -586,11 +587,11 @@ pub struct OrderDetails {
     created_timestamp_utc: String,
     #[serde(rename = "type")]
     type_: String,
-    volume_ordered: f32,
-    volume_filled: f32,
-    price: f32,
-    avg_price: f32,
-    reserved_amount: f32,
+    volume_ordered: Decimal,
+    volume_filled: Decimal,
+    price: Decimal,
+    avg_price: Decimal,
+    reserved_amount: Decimal,
     status: String,
     primary_currency_code: String,
     secondary_currency_code: String,
@@ -606,9 +607,9 @@ pub struct Accounts(Vec<Account>);
 pub struct Account {
     account_guid: String,
     account_status: String,
-    available_balance: f32,
+    available_balance: Decimal,
     currency_code: String,
-    total_balance: f32,
+    total_balance: Decimal,
 }
 
 /// Returned by GetTransactions
@@ -624,7 +625,7 @@ pub struct Transactions {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Transaction {
-    balance: f32,
+    balance: Decimal,
     bitcoin_transaction_id: String,
     bitcoin_transaction_output_index: String,
     ethereum_transaction_id: String,
@@ -632,7 +633,7 @@ pub struct Transaction {
     created_timestamp_utc: String,
     credit: String,
     currency_code: String,
-    debit: f32,
+    debit: Decimal,
     settle_timestamp_utc: String,
     status: String,
     #[serde(rename = "type")]
@@ -677,8 +678,8 @@ pub struct Trade {
     order_guid: String,
     order_type: String,
     order_timestamp_utc: String,
-    volume_traded: f32,
-    price: f32,
+    volume_traded: Decimal,
+    price: Decimal,
     primary_currency_code: String,
     secondary_currency_code: String,
 }
@@ -692,7 +693,7 @@ pub struct BrokerageFees(Vec<Fees>);
 #[serde(rename_all = "PascalCase")]
 pub struct Fees {
     currency_code: String,
-    fee: f32,
+    fee: Decimal,
 }
 
 /// Returned by PlaceLimitOrder
@@ -703,10 +704,10 @@ pub struct PlaceLimitOrder {
     created_timestamp_utc: String,
     #[serde(rename = "type")]
     type_: String,
-    volume_ordered: f32,
-    volume_filled: f32,
-    price: f32,
-    reserved_amount: f32,
+    volume_ordered: Decimal,
+    volume_filled: Decimal,
+    price: Decimal,
+    reserved_amount: Decimal,
     status: String,
     primary_currency_code: String,
     secondary_currency_code: String,
@@ -720,9 +721,9 @@ pub struct PlaceMarketOrder {
     created_timestamp_utc: String,
     #[serde(rename = "type")]
     type_: String,
-    volume_ordered: f32,
-    volume_filled: f32,
-    reserved_amount: f32,
+    volume_ordered: Decimal,
+    volume_filled: Decimal,
+    reserved_amount: Decimal,
     status: String,
     primary_currency_code: String,
     secondary_currency_code: String,
@@ -736,10 +737,10 @@ pub struct CancelOrder {
     created_timestamp_utc: String,
     #[serde(rename = "type")]
     type_: String,
-    volume_ordered: f32,
-    volume_filled: f32,
-    price: f32,
-    reserved_amount: f32,
+    volume_ordered: Decimal,
+    volume_filled: Decimal,
+    price: Decimal,
+    reserved_amount: Decimal,
     status: String,
     primary_currency_code: String,
     secondary_currency_code: String,
@@ -761,8 +762,8 @@ pub struct DigitalCurrencyWithdrawal {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Amount {
-    total: f32,
-    fee: f32,
+    total: Decimal,
+    fee: Decimal,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -780,7 +781,7 @@ pub struct RequestFiatwithdrawal {
     created_timestamp_utc: String,
     fiat_withdrawal_request_guid: String,
     status: String,
-    total_withdrawal_amonut: f32,
-    fee_amount: f32,
+    total_withdrawal_amonut: Decimal,
+    fee_amount: Decimal,
     currency: String,
 }

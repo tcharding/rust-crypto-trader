@@ -1,5 +1,6 @@
 use anyhow::Result;
 use reqwest::Client;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
 use url::Url;
@@ -196,8 +197,8 @@ pub struct OrderBook {
 #[serde(rename_all = "PascalCase")]
 pub struct OrderType {
     pub order_type: String,
-    pub price: f32,
-    pub volume: f32,
+    pub price: Decimal,
+    pub volume: Decimal,
 }
 
 /// Returned by GetMarketSummary
@@ -205,14 +206,14 @@ pub struct OrderType {
 #[serde(rename_all = "PascalCase")]
 pub struct MarketSummary {
     pub created_timestamp_utc: String,
-    pub current_highest_bid_price: f32,
-    pub current_lowest_offer_price: f32,
-    pub day_avg_price: f32,
-    pub day_highest_price: f32,
-    pub day_lowest_price: f32,
-    pub day_volume_xbt: f32,
-    pub day_volume_xbt_in_secondary_currrency: f32,
-    pub last_price: f32,
+    pub current_highest_bid_price: Decimal,
+    pub current_lowest_offer_price: Decimal,
+    pub day_avg_price: Decimal,
+    pub day_highest_price: Decimal,
+    pub day_lowest_price: Decimal,
+    pub day_volume_xbt: Decimal,
+    pub day_volume_xbt_in_secondary_currrency: Decimal,
+    pub last_price: Decimal,
     pub primary_currency_code: String,
     pub secondary_currency_code: String,
 }
@@ -242,8 +243,8 @@ pub struct Orders {
 #[serde(rename_all = "PascalCase")]
 pub struct OrderGuid {
     guid: String,
-    price: f32,
-    volume: f32,
+    price: Decimal,
+    volume: Decimal,
 }
 
 /// Returned by GetTradeHistorySummary
@@ -262,13 +263,13 @@ pub struct TradeHistorySummary {
 pub struct HistorySummary {
     start_timestamp_utc: String,
     end_timestamp_utc: String,
-    primary_currency_volume: f32,
-    secondary_currency_volume: f32,
-    opening_secondary_currency_price: f32,
-    closing_secondary_currency_price: f32,
-    highest_secondary_currency_price: f32,
-    lowest_secondary_currency_price: f32,
-    average_secondary_currency_price: f32,
+    primary_currency_volume: Decimal,
+    secondary_currency_volume: Decimal,
+    opening_secondary_currency_price: Decimal,
+    closing_secondary_currency_price: Decimal,
+    highest_secondary_currency_price: Decimal,
+    lowest_secondary_currency_price: Decimal,
+    average_secondary_currency_price: Decimal,
     number_of_trades: usize,
 }
 
@@ -285,8 +286,8 @@ pub struct RecentTrades {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Trade {
-    primary_currency_amount: f32,
-    secondary_currency_trade_price: f32,
+    primary_currency_amount: Decimal,
+    secondary_currency_trade_price: Decimal,
     trade_timestamp_utc: String,
 }
 
@@ -300,7 +301,7 @@ pub struct FxRates(Vec<Rate>);
 pub struct Rate {
     currency_code_a: String,
     currency_code_b: String,
-    rate: f32,
+    rate: Decimal,
 }
 
 #[cfg(test)]

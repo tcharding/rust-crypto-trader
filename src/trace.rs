@@ -5,34 +5,39 @@ use tracing::{info, subscriber, Level};
 use tracing_log::LogTracer;
 use tracing_subscriber::FmtSubscriber;
 
-pub fn init_tracing(crate_level: LevelFilter) -> Result<()> {
-    if crate_level == LevelFilter::Off {
-        return Ok(());
-    }
+// This crate tracing level => use `LevelFilter`
+//
+// LevelFilter::Error
+// LevelFilter::Warn
+// LevelFilter::Info
+// LevelFilter::Debug
+// LevelFilter::Trace
+//
+// Upstream lib tracing level => use `Level`
+//
+// Level::ERROR,
+// Level::WARN,
+// Level::INFO,
+// Level::DEBUG,
+// Level::TRACE,
 
-    let lib_level = LevelFilter::Info;
+pub fn init_tracing() -> Result<()> {
+    let crate_level = LevelFilter::Debug;
+    let lib_level = Level::INFO;
 
-    LogTracer::init_with_filter(lib_level)?;
+    LogTracer::init_with_filter(crate_level)?;
 
     let ansi = atty::is(Stream::Stdout);
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(into_level(crate_level))
+        .with_max_level(lib_level.clone())
         .with_ansi(ansi)
         .finish();
 
     subscriber::set_global_default(subscriber)?;
-    info!("Initialized tracing with level: {}", crate_level);
+    info!(
+        "Initialized tracing with crate level: {}, upstream lib level: {}",
+        crate_level, lib_level
+    );
 
     Ok(())
-}
-
-fn into_level(level: LevelFilter) -> Level {
-    match level {
-        LevelFilter::Off => unreachable!(),
-        LevelFilter::Error => Level::ERROR,
-        LevelFilter::Warn => Level::WARN,
-        LevelFilter::Info => Level::INFO,
-        LevelFilter::Debug => Level::DEBUG,
-        LevelFilter::Trace => Level::TRACE,
-    }
 }
