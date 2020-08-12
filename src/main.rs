@@ -15,7 +15,7 @@ pub async fn main() -> Result<()> {
     let config =
         config::parse(&path).with_context(|| format!("config file: {}", path.display()))?;
 
-    //    market::test_ir_api(config.keys.clone()).await;
+    market::test_ir_api(config.keys.clone()).await;
 
     let m = Market::default().with_read_only(config.keys.read);
 
