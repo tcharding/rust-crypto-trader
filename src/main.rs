@@ -27,21 +27,28 @@ pub async fn main() -> Result<()> {
     let mut values = MinMax::default();
     let m = Market::default().with_read_only(config.keys.read);
 
-    let mut counter = 0;
+    let mut total_time_running_counter = 0; // Total minutes running.
+    let mut loop_counter = 0;
     loop {
         update_values(&m, &mut values).await;
 
         // We loop every second, so write file every 5 minuets
-        if counter == 0 {
+        if loop_counter == 0 {
             write_to_file(OUT_FILE, &values).await;
-            counter = 0;
+            loop_counter = 0;
         }
 
         tokio::time::delay_for(Duration::from_secs(1)).await;
 
-        counter += 1;
-        if counter > 60 * 5 {
-            counter = 0;
+        loop_counter += 1;
+        if loop_counter > 60 * 5 {
+            loop_counter = 0;
+            total_time_running_counter += 5;
+        }
+
+        // Stop after 5 hours.
+        if total_time_running_counter > 5 * 60 {
+            process::exit(0);
         }
     }
 }
