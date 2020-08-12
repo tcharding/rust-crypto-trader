@@ -6,8 +6,23 @@ exchange https://www.independentreserve.com/
 
 ## Usage
 
-Different functionality is available on the various branches. `master`
-has a test function call to [partially] test the exchange API.
+Different functionality is available on the various branches.
+
+### Spread bot
+
+Gets current spread for AUD/BTC every second, writes min/max values to
+file every 5 minutes.
+
+```
+    git checkout spread-bot
+    cargo run
+```
+
+Output file is hardcoded in `main.rs`.
+
+## Testing
+
+`master` has a test function call to [partially] test the exchange API.
 
 ```
 market::test_ir_api(config.keys.clone()).await;

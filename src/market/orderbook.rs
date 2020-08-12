@@ -1,4 +1,4 @@
-use crate::{market::api, num};
+use crate::market::api;
 use rust_decimal::Decimal;
 
 #[derive(Clone, Debug)]
@@ -11,9 +11,9 @@ pub struct OrderBook {
 
 impl OrderBook {
     /// Returns the current best bid/offer spread.
-    pub fn bid_ask_spread(&self) -> String {
+    pub fn bid_ask_spread(&self) -> Option<(Decimal, Decimal)> {
         if self.buys.is_empty() || self.sells.is_empty() {
-            return "no bid/ask data".to_string();
+            return None;
         }
 
         let highest_bid = self.buys.first().unwrap();
@@ -22,23 +22,11 @@ impl OrderBook {
         let bid = highest_bid.price;
         let ask = lowest_ask.price;
 
-        let bid_volume = highest_bid.volume;
-        let ask_volume = lowest_ask.volume;
-
         let mmr = (bid + ask) / Decimal::from(2);
         let spread = ask - bid;
         let percentage = spread / mmr;
 
-        format!(
-            "{}({})/{}({}) mmr={} spread={} %={}",
-            bid,
-            bid_volume,
-            ask,
-            ask_volume,
-            mmr,
-            spread,
-            num::to_percentage_string(&percentage),
-        )
+        Some((spread, percentage))
     }
 }
 
