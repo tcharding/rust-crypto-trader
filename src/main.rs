@@ -1,5 +1,9 @@
 use anyhow::{Context, Result};
-use crypto_trader::{config, market::Market, trace};
+use crypto_trader::{
+    config,
+    market::{self, Market},
+    trace,
+};
 
 /// Crypto-trader configuration file.
 const CONFIG_FILE: &str = ".config/crypto-trader/config.toml";
