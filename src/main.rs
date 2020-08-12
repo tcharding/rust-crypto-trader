@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::prelude::*;
 use log::LevelFilter;
 use rust_decimal::Decimal;
 use std::{fmt, fs::OpenOptions, io::prelude::*, process, time::Duration};
@@ -105,11 +105,11 @@ async fn update_values(m: &Market, v: &mut MinMax) {
 
 /// Write values to file.
 async fn write_to_file(file: &str, v: &MinMax) {
-    let when = Utc::now().naive_local();
+    let local: DateTime<Local> = Local::now();
 
     let s = format!(
         "{} spread(min/max) %(min/max): {}/{} {}/{}",
-        when.format("%Y-%m-%d %H:%M:%S").to_string(),
+        local.format("%Y-%m-%d %H:%M:%S").to_string(),
         num::to_aud_string(&v.min_spread),
         num::to_aud_string(&v.max_spread),
         num::to_percentage_string(&v.min_percentage),
