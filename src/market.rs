@@ -7,14 +7,12 @@
 
 #[allow(dead_code)] // Don't warn if we do not use all the API methods.
 mod api;
-mod num;
 mod orderbook;
 
 use self::api::{Private, Public};
 use crate::Key;
 use anyhow::Result;
 
-pub use num::*;
 pub use orderbook::*;
 pub use test::*;
 

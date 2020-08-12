@@ -15,6 +15,7 @@
 
 pub mod config;
 pub mod market;
+pub mod num;
 pub mod trace;
 
 pub use crate::config::*;

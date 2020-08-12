@@ -1,4 +1,5 @@
-use crate::market::{api, Price, Volume};
+use crate::{market::api, num};
+use rust_decimal::Decimal;
 
 #[derive(Clone, Debug)]
 pub struct OrderBook {
@@ -24,7 +25,7 @@ impl OrderBook {
         let bid_volume = highest_bid.volume;
         let ask_volume = lowest_ask.volume;
 
-        let mmr = (bid + ask) / 2;
+        let mmr = (bid + ask) / Decimal::from(2);
         let spread = ask - bid;
         let percentage = spread / mmr;
 
@@ -36,7 +37,7 @@ impl OrderBook {
             ask_volume,
             mmr,
             spread,
-            percentage.to_percentage(),
+            num::to_percentage_string(&percentage),
         )
     }
 }
@@ -63,16 +64,16 @@ impl From<api::OrderBook> for OrderBook {
 #[derive(Clone, Copy, Debug)]
 pub struct Order {
     position: Position,
-    price: Price,
-    volume: Volume,
+    price: Decimal,
+    volume: Decimal,
 }
 
 impl From<&api::PublicOrder> for Order {
     fn from(order: &api::PublicOrder) -> Self {
         Order {
             position: order.order_type.into(),
-            price: order.price.into(),
-            volume: order.volume.into(),
+            price: order.price,
+            volume: order.volume,
         }
     }
 }
