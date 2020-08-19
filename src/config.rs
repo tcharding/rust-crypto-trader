@@ -15,20 +15,21 @@ pub fn parse(path: &Path) -> Result<Config> {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Config {
-    pub keys: Keys,
+    pub ir: Exchange,
+    pub kraken: Exchange,
 }
-/// Keys needed to access the private API methods.
+
 #[derive(Clone, Debug, Deserialize)]
-pub struct Keys {
-    /// Read-only API access.
-    pub read: Key,
+pub struct Exchange {
+    /// A read-only API Key.
+    pub read_only: Key,
 }
 
 /// A single key, made up of public and private parts.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Key {
-    pub key: String,
-    pub secret: String,
+    pub api_key: String,
+    pub api_secret: String,
 }
 
 #[cfg(test)]
@@ -40,18 +41,18 @@ mod tests {
     fn config_works() {
         let config: Config = toml::from_str(
             r#"
-        [keys]
+        [ir]
 
-                [keys.read]
-                key = "b2111111-4b1c-4880-b4c4-036d81f3de59"
-                secret = "11111193333335555558888888111111"
+                [read-only]
+                api_key = "b2111111-4b1c-4880-b4c4-036d81f3de59"
+                api_secret = "11111193333335555558888888111111"
     "#,
         )
         .unwrap();
 
         let want_key = "b2111111-4b1c-4880-b4c4-036d81f3de59".to_string();
         let want_secret = "11111193333335555558888888111111".to_string();
-        assert_that!(&config.keys.read.key).is_equal_to(&want_key);
-        assert_that!(&config.keys.read.secret).is_equal_to(&want_secret)
+        assert_that!(&config.ir.read_only.api_key).is_equal_to(&want_key);
+        assert_that!(&config.ir.read_only.api_secret).is_equal_to(&want_secret)
     }
 }

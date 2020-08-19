@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use hmac::{Hmac, Mac, NewMac};
 use reqwest::{Client, StatusCode};
 use rust_decimal::Decimal;
@@ -108,8 +108,12 @@ impl Private {
             bail!("api call returned status: {}", res.status())
         }
 
-        let body = res.text().await?;
-        let orders: Orders = serde_json::from_str(&body)?;
+        let body = res
+            .text()
+            .await
+            .with_context(|| format!("no text: {:?}", body))?;
+        let orders: Orders = serde_json::from_str(&body)
+            .with_context(|| format!("serde failed for body: {:?}", body))?;
 
         Ok(orders)
     }
@@ -571,7 +575,7 @@ pub struct Order {
     order_guid: String,
     order_type: String,
     outstanding: Decimal,
-    price: Decimal,
+    price: Option<Decimal>,
     primary_currency_code: String,
     secondary_currency_code: String,
     status: String,

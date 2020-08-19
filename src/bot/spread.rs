@@ -1,6 +1,7 @@
+use anyhow::{Context, Result};
 use chrono::prelude::*;
 use rust_decimal::Decimal;
-use std::{fmt, fs::OpenOptions, io::prelude::*, process, time::Duration};
+use std::{fmt, fs::OpenOptions, io::prelude::*, time::Duration};
 use tracing::{error, info};
 
 use crate::{config::Key, market::Market, num};
@@ -11,19 +12,22 @@ const LOG_FILE: &str = "spread-bot.log";
 const SAMPLE_PERIOD_SECS: u64 = 5; // Get orderbook every X seconds.
 const LOG_ENTRY_PERIOD_MINS: u64 = 60; // Once an hour
 
-pub async fn run(key: Key) {
+/// Entry point for the spread-bot
+pub async fn run(read: Key) -> Result<()> {
     let mut values = MinMax::default();
-    let m = Market::default().with_read_only(key);
+    let m = Market::default().with_read_only(read);
+
+    info!("writing min/max values to {}", LOG_FILE);
+    write_to_file(LOG_FILE, &values).await?;
 
     let mut loop_counter = 0;
     loop {
         update_values(&m, &mut values).await;
-        println!("{}", log_entry(&values));
 
         let minutes_running = loop_counter * SAMPLE_PERIOD_SECS / 60; // Rust uses floor integer division.
 
         if minutes_running > LOG_ENTRY_PERIOD_MINS {
-            write_to_file(LOG_FILE, &values).await;
+            write_to_file(LOG_FILE, &values).await?;
 
             values = MinMax::default();
             loop_counter = 0;
@@ -93,24 +97,20 @@ async fn update_values(m: &Market, v: &mut MinMax) {
 }
 
 /// Write values to file.
-async fn write_to_file(file: &str, v: &MinMax) {
-    let mut file = match OpenOptions::new()
+async fn write_to_file(file: &str, v: &MinMax) -> Result<()> {
+    let mut file = OpenOptions::new()
         .write(true)
         .create(true)
         .append(true)
         .open(file)
-    {
-        Ok(f) => f,
-        Err(e) => {
-            error!("failed to open file: {}", e);
-            process::exit(1); // Does this work with async code?
-        }
-    };
+        .with_context(|| format!("failed to open/create file: {}", file))?;
 
     let s = log_entry(v);
     if let Err(e) = writeln!(file, "{}", s) {
         error!("Couldn't write to file: {}", e);
     }
+
+    Ok(())
 }
 
 fn log_entry(v: &MinMax) -> String {

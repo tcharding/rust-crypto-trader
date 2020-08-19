@@ -2,7 +2,8 @@ use crate::market::api;
 use anyhow::{bail, Result};
 use num_traits::identities::Zero;
 use rust_decimal::Decimal;
-use std::fmt;
+use std::{convert::TryFrom, fmt};
+use tracing::warn;
 
 #[derive(Clone, Debug)]
 pub struct OrderBook {
@@ -65,22 +66,29 @@ impl OrderBook {
     }
 }
 
-#[allow(clippy::fallible_impl_from)]
 impl From<api::OrderBook> for OrderBook {
     fn from(orderbook: api::OrderBook) -> Self {
         let mut buys = Vec::with_capacity(orderbook.buy_orders.len());
         for order in orderbook.buy_orders.iter() {
-            let o = Order::from(order);
-            debug_assert!(o.position == Position::Buy);
-            buys.push(o);
+            if let Ok(o) = Order::try_from(order) {
+                if o.position == Position::Buy {
+                    buys.push(o);
+                } else {
+                    warn!("non-buy order in buys list");
+                }
+            }
         }
         buys.sort_unstable_by(|a: &Order, b: &Order| a.price.cmp(&b.price).reverse());
 
         let mut sells = Vec::with_capacity(orderbook.sell_orders.len());
         for order in orderbook.sell_orders.iter() {
-            let o = Order::from(order);
-            debug_assert!(o.position == Position::Sell);
-            sells.push(o);
+            if let Ok(o) = Order::try_from(order) {
+                if o.position == Position::Sell {
+                    sells.push(o);
+                } else {
+                    warn!("non-sell order in sells list");
+                }
+            }
         }
         sells.sort_unstable_by(|a: &Order, b: &Order| a.price.cmp(&b.price));
 
@@ -96,15 +104,24 @@ pub struct Order {
     volume: Decimal,
 }
 
-impl From<&api::PublicOrder> for Order {
-    fn from(order: &api::PublicOrder) -> Self {
-        Order {
+impl TryFrom<&api::PublicOrder> for Order {
+    type Error = NullValue;
+
+    fn try_from(order: &api::PublicOrder) -> Result<Self, Self::Error> {
+        let price = order.price.ok_or_else(|| NullValue)?;
+        let volume = order.volume.ok_or_else(|| NullValue)?;
+
+        Ok(Order {
             position: order.order_type.into(),
-            price: order.price,
-            volume: order.volume,
-        }
+            price,
+            volume,
+        })
     }
 }
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("API returned a null value")]
+pub struct NullValue;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Position {

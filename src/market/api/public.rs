@@ -197,8 +197,8 @@ pub struct OrderBook {
 #[serde(rename_all = "PascalCase")]
 pub struct PublicOrder {
     pub order_type: OrderType,
-    pub price: Decimal,
-    pub volume: Decimal,
+    pub price: Option<Decimal>,
+    pub volume: Option<Decimal>,
 }
 
 // TODO: Add enums for all the other String return types.
@@ -215,14 +215,14 @@ pub enum OrderType {
 #[serde(rename_all = "PascalCase")]
 pub struct MarketSummary {
     pub created_timestamp_utc: String,
-    pub current_highest_bid_price: Decimal,
-    pub current_lowest_offer_price: Decimal,
-    pub day_avg_price: Decimal,
-    pub day_highest_price: Decimal,
-    pub day_lowest_price: Decimal,
-    pub day_volume_xbt: Decimal,
-    pub day_volume_xbt_in_secondary_currrency: Decimal,
-    pub last_price: Decimal,
+    pub current_highest_bid_price: Option<Decimal>,
+    pub current_lowest_offer_price: Option<Decimal>,
+    pub day_avg_price: Option<Decimal>,
+    pub day_highest_price: Option<Decimal>,
+    pub day_lowest_price: Option<Decimal>,
+    pub day_volume_xbt: Option<Decimal>,
+    pub day_volume_xbt_in_secondary_currrency: Option<Decimal>,
+    pub last_price: Option<Decimal>,
     pub primary_currency_code: String,
     pub secondary_currency_code: String,
 }
@@ -252,8 +252,8 @@ pub struct Orders {
 #[serde(rename_all = "PascalCase")]
 pub struct OrderGuid {
     guid: String,
-    price: Decimal,
-    volume: Decimal,
+    price: Option<Decimal>,
+    volume: Option<Decimal>,
 }
 
 /// Returned by GetTradeHistorySummary
@@ -272,13 +272,13 @@ pub struct TradeHistorySummary {
 pub struct HistorySummary {
     start_timestamp_utc: String,
     end_timestamp_utc: String,
-    primary_currency_volume: Decimal,
-    secondary_currency_volume: Decimal,
-    opening_secondary_currency_price: Decimal,
-    closing_secondary_currency_price: Decimal,
-    highest_secondary_currency_price: Decimal,
-    lowest_secondary_currency_price: Decimal,
-    average_secondary_currency_price: Decimal,
+    primary_currency_volume: Option<Decimal>,
+    secondary_currency_volume: Option<Decimal>,
+    opening_secondary_currency_price: Option<Decimal>,
+    closing_secondary_currency_price: Option<Decimal>,
+    highest_secondary_currency_price: Option<Decimal>,
+    lowest_secondary_currency_price: Option<Decimal>,
+    average_secondary_currency_price: Option<Decimal>,
     number_of_trades: usize,
 }
 
@@ -295,8 +295,8 @@ pub struct RecentTrades {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Trade {
-    primary_currency_amount: Decimal,
-    secondary_currency_trade_price: Decimal,
+    primary_currency_amount: Option<Decimal>,
+    secondary_currency_trade_price: Option<Decimal>,
     trade_timestamp_utc: String,
 }
 
@@ -310,7 +310,7 @@ pub struct FxRates(Vec<Rate>);
 pub struct Rate {
     currency_code_a: String,
     currency_code_b: String,
-    rate: Decimal,
+    rate: Option<Decimal>,
 }
 
 #[cfg(test)]

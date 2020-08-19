@@ -1,49 +1,55 @@
 use anyhow::{Context, Result};
 use log::LevelFilter;
-use rust_decimal::Decimal;
+use std::{fs, path::Path, process};
+use structopt::StructOpt;
 
 use crypto_trader::{
-    config,
-    market::{kraken, Market},
-    num, trace,
+    bot::spread,
+    cli::{self, Cmd},
+    config, market, trace,
 };
 
 /// Crypto-trader configuration files (we pre-pend HOME to these).
-const IR_CONFIG_FILE: &str = ".config/crypto-trader/config.toml";
-const KRAKEN_CONFIG_FILE: &str = ".config/crypto-trader/kraken.json";
+const CONFIG_FILE: &str = ".config/crypto-trader/config.toml";
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
-    let path = directories::UserDirs::new()
-        .map(|d| d.home_dir().to_path_buf().join(IR_CONFIG_FILE))
-        .expect("failed to construct config path");
+    let options = cli::Options::from_args();
+
+    let config_path = options.config_file.unwrap_or_else(|| {
+        directories::UserDirs::new()
+            .map(|d| d.home_dir().to_path_buf().join(CONFIG_FILE))
+            .expect("failed to construct config path")
+    });
+
+    if options.dump_config {
+        dump_config(&config_path)?;
+        process::exit(0);
+    }
 
     trace::init_tracing(LevelFilter::Trace)?;
 
-    let config =
-        config::parse(&path).with_context(|| format!("config file: {}", path.display()))?;
+    let config = config::parse(&config_path)
+        .with_context(|| format!("config file: {}", config_path.display()))?;
+    // tracing::debug!("{:?}", config);
 
-    // market::test_ir_api(config.keys.clone()).await;
-    // spread::run(config.keys.read).await; // Never returns.
+    if options.cmd.is_none() {
+        println!("no command supplied, running API tests ...");
+        market::test_ir_api(config.ir.read_only).await;
+        process::exit(0);
+    }
 
-    let m = Market::default().with_read_only(config.keys.read);
+    match options.cmd.unwrap() {
+        Cmd::Test => market::test_ir_api(config.ir.read_only).await,
+        Cmd::SpreadBot => spread::run(config.ir.read_only).await?,
+    }
 
-    let orderbook = m.order_book().await?;
-    let (bid, ask) = orderbook.spread_to_fill(Decimal::from(1))?;
-    let (spread, percent) = num::spread_percent(&bid, &ask);
+    Ok(())
+}
 
-    println!(
-        "{} {}",
-        num::to_aud_string(&spread),
-        num::to_percent_string(&percent)
-    );
-
-    let path = directories::UserDirs::new()
-        .map(|d| d.home_dir().to_path_buf().join(KRAKEN_CONFIG_FILE))
-        .expect("failed to construct config path");
-    let mut kapi = kraken::Api::new(path).expect("failed to create kraken API");
-    kapi.assert_public()
-        .expect("failed to assert kraken API works");
+fn dump_config(path: &Path) -> anyhow::Result<()> {
+    let s = fs::read_to_string(path)?;
+    println!("Read config file: \n\n{}", s);
 
     Ok(())
 }

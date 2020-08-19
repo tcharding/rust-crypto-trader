@@ -31,7 +31,7 @@ pub struct Market {
 impl Market {
     pub fn with_read_only(self, read: Key) -> Self {
         let nonce = crate::nonce();
-        let private = Private::new(nonce, read.key, read.secret);
+        let private = Private::new(nonce, read.api_key, read.api_secret);
 
         Market {
             public: self.public,
@@ -56,15 +56,15 @@ impl Default for Market {
 
 mod test {
     use super::*;
-    use crate::config::{Key, Keys};
+    use crate::config::Key;
     use tracing::info;
 
     /// Test the Independent Reserve API.
-    pub async fn test_ir_api(keys: Keys) {
+    pub async fn test_ir_api(read_only: Key) {
         assert_public_api()
             .await
             .expect("public API method assertion failed");
-        assert_private_api_read_only(keys.read)
+        assert_private_api_read_only(read_only)
             .await
             .expect("private read-only API assertion failed");
     }
@@ -100,13 +100,15 @@ mod test {
         let index = 1;
         let nonce = crate::nonce();
 
-        let mut api = Private::new(nonce, read.key, read.secret);
+        let mut api = Private::new(nonce, read.api_key, read.api_secret);
 
         info!("Running [most] private API methods ...");
+
         let _ = api.get_open_orders(base, quote, index).await?;
         let _ = api.get_closed_orders(base, quote, index).await?;
-        // FIXME: Bug here
+
         let _ = api.get_closed_filled_orders(base, quote, index).await?;
+
         let _ = api.get_accounts().await?;
         let _ = api.get_digital_currency_deposit_address(base).await?;
         let _ = api
