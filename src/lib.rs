@@ -13,6 +13,7 @@
 )]
 #![forbid(unsafe_code)]
 
+pub mod bot;
 pub mod config;
 pub mod market;
 pub mod num;
