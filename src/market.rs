@@ -7,6 +7,7 @@
 
 #[allow(dead_code)] // Don't warn if we do not use all the API methods.
 mod api;
+pub mod kraken;
 mod orderbook;
 
 use self::api::{Private, Public};
@@ -104,6 +105,7 @@ mod test {
         info!("Running [most] private API methods ...");
         let _ = api.get_open_orders(base, quote, index).await?;
         let _ = api.get_closed_orders(base, quote, index).await?;
+        // FIXME: Bug here
         let _ = api.get_closed_filled_orders(base, quote, index).await?;
         let _ = api.get_accounts().await?;
         let _ = api.get_digital_currency_deposit_address(base).await?;

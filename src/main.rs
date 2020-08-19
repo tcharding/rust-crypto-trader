@@ -1,17 +1,18 @@
 use anyhow::{Context, Result};
 use crypto_trader::{
     config,
-    market::{self, Market},
+    market::{self, kraken, Market},
     trace,
 };
 
-/// Crypto-trader configuration file.
-const CONFIG_FILE: &str = ".config/crypto-trader/config.toml";
+/// Crypto-trader configuration files (we pre-pend HOME to these).
+const IR_CONFIG_FILE: &str = ".config/crypto-trader/config.toml";
+const KRAKEN_CONFIG_FILE: &str = ".config/crypto-trader/kraken.json";
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
     let path = directories::UserDirs::new()
-        .map(|d| d.home_dir().to_path_buf().join(CONFIG_FILE))
+        .map(|d| d.home_dir().to_path_buf().join(IR_CONFIG_FILE))
         .expect("failed to construct config path");
 
     trace::init_tracing()?;
@@ -19,12 +20,19 @@ pub async fn main() -> Result<()> {
     let config =
         config::parse(&path).with_context(|| format!("config file: {}", path.display()))?;
 
-    market::test_ir_api(config.keys.clone()).await;
+    //    market::test_ir_api(config.keys.clone()).await;
 
     let m = Market::default().with_read_only(config.keys.read);
 
     let orderbook = m.order_book().await?;
     println!("{}", orderbook.bid_ask_spread());
+
+    let path = directories::UserDirs::new()
+        .map(|d| d.home_dir().to_path_buf().join(KRAKEN_CONFIG_FILE))
+        .expect("failed to construct config path");
+    let mut kapi = kraken::Api::new(path).expect("failed to create kraken API");
+    kapi.assert_public()
+        .expect("failed to assert kraken API works");
 
     Ok(())
 }

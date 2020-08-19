@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0"
 atty = "0.2"
+coinnect = "0.5"
 directories = "3.0"
 float-cmp = "0.8"
 hex = "0.4"
