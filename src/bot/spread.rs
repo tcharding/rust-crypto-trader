@@ -10,7 +10,7 @@ use crate::{config::Key, market::Market, num};
 const LOG_FILE: &str = "spread-bot.log";
 
 const SAMPLE_PERIOD_SECS: u64 = 5; // Get orderbook every X seconds.
-const LOG_ENTRY_PERIOD_MINS: u64 = 60; // Once an hour
+const LOG_ENTRY_PERIOD_SECS: u64 = 3600; // Once an hour
 
 /// Entry point for the spread-bot
 pub async fn run(read: Key) -> Result<()> {
@@ -24,9 +24,9 @@ pub async fn run(read: Key) -> Result<()> {
     loop {
         update_values(&m, &mut values).await;
 
-        let minutes_running = loop_counter * SAMPLE_PERIOD_SECS / 60; // Rust uses floor integer division.
+        let time_running = loop_counter * SAMPLE_PERIOD_SECS;
 
-        if minutes_running > LOG_ENTRY_PERIOD_MINS {
+        if time_running > LOG_ENTRY_PERIOD_SECS {
             write_to_file(LOG_FILE, &values).await?;
 
             values = MinMax::default();
