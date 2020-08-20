@@ -31,6 +31,8 @@ pub async fn run(read: Key) -> Result<()> {
 
             values = MinMax::default();
             loop_counter = 0;
+        } else {
+            loop_counter += 1;
         }
 
         tokio::time::delay_for(Duration::from_secs(SAMPLE_PERIOD_SECS)).await;
