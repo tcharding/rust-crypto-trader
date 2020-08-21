@@ -1,10 +1,12 @@
 use anyhow::{Context, Result};
 use chrono::prelude::*;
 use rust_decimal::Decimal;
-use std::{fmt, fs::OpenOptions, io::prelude::*, time::Duration};
+use std::{fmt, fs::OpenOptions, io::prelude::*, str::FromStr, time::Duration};
 use tracing::{error, info};
 
 use crate::{config::Key, market::Market, num};
+
+const DEBUG: bool = true;
 
 /// Bot output log file.
 const LOG_FILE: &str = "spread-bot.log";
@@ -45,6 +47,12 @@ pub struct MinMax {
     max_spread: Decimal,
     min_percent: Decimal,
     max_percent: Decimal,
+
+    // Percentage counters, identifier refers to 0.x %
+    less_than_two: u32,
+    two_to_three: u32,
+    three_to_four: u32,
+    greater_than_four: u32,
 }
 
 impl fmt::Display for MinMax {
@@ -65,6 +73,11 @@ impl Default for MinMax {
 
             min_percent: Decimal::max_value(),
             max_percent: Decimal::min_value(),
+
+            less_than_two: 0,
+            two_to_three: 0,
+            three_to_four: 0,
+            greater_than_four: 0,
         }
     }
 }
@@ -96,6 +109,26 @@ async fn update_values(m: &Market, v: &mut MinMax) {
     if percent > v.max_percent {
         v.max_percent = percent;
     }
+
+    if percent < Decimal::from_str("0.002").unwrap() {
+        v.less_than_two += 1;
+    } else if percent < Decimal::from_str("0.003").unwrap() {
+        v.two_to_three += 1;
+    } else if percent < Decimal::from_str("0.004").unwrap() {
+        v.three_to_four += 1;
+    } else {
+        v.greater_than_four += 1;
+    }
+
+    if DEBUG {
+        let log_entry = log_entry(v);
+        info!(
+            "\t ${} \t %{} \t {}",
+            num::to_aud_string(&spread),
+            num::to_percent_string(&percent),
+            log_entry,
+        );
+    }
 }
 
 /// Write values to file.
@@ -119,11 +152,11 @@ fn log_entry(v: &MinMax) -> String {
     let local: DateTime<Local> = Local::now();
 
     format!(
-        "{} spread: $ min/max % min/max: {} / {}    {} / {}",
+        "{} spread counts % <2  2-3  3-4  >4 :\t{}\t{}\t{}\t{}",
         local.format("%Y-%m-%d %H:%M:%S").to_string(),
-        num::to_aud_string(&v.min_spread),
-        num::to_aud_string(&v.max_spread),
-        num::to_percent_string(&v.min_percent),
-        num::to_percent_string(&v.max_percent),
+        v.less_than_two,
+        v.two_to_three,
+        v.three_to_four,
+        v.greater_than_four,
     )
 }
